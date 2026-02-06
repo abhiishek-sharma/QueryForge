@@ -1,8 +1,8 @@
-# CORE AI Chatbot
+# SQL AI Chatbot
 
 <div align="center">
 
-![CORE AI](https://img.shields.io/badge/CORE-AI-6366f1?style=for-the-badge&logo=openai&logoColor=white)
+![SQL AI](https://img.shields.io/badge/SQL-AI-6366f1?style=for-the-badge&logo=openai&logoColor=white)
 
 **Enterprise-grade AI chatbot with cyberpunk UI powered by Mistral AI**
 
@@ -20,7 +20,7 @@
 
 ## 📖 Overview
 
-CORE AI Chatbot is a production-ready, enterprise-grade conversational AI system featuring:
+SQL AI Chatbot is a production-ready, enterprise-grade conversational AI system featuring:
 
 - 🏗️ **Clean Architecture** - Layered design (API → Service → Repository → Database)
 - 🔐 **Enterprise Security** - JWT authentication, API keys, rate limiting, password hashing
@@ -34,7 +34,7 @@ CORE AI Chatbot is a production-ready, enterprise-grade conversational AI system
 
 ## ✨ Features
 
-### Core Features
+### SQL Features
 - 🤖 **AI-Powered Chat** - Mistral AI integration with streaming responses
 - 💬 **Conversation Management** - Create, update, delete, and search conversations
 - 📝 **Message History** - Persistent storage with full context retention
@@ -59,8 +59,8 @@ CORE AI Chatbot is a production-ready, enterprise-grade conversational AI system
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/core-ai-chatbot.git
-cd core-ai-chatbot
+git clone https://github.com/yourusername/SQL-ai-chatbot.git
+cd SQL-ai-chatbot
 
 # Configure environment
 cp backend/.env.example backend/.env
@@ -124,11 +124,11 @@ scripts\setup_dev.bat
 ## 📁 Project Structure
 
 ```
-core-ai-chatbot/
+SQL-ai-chatbot/
 ├── backend/                    # FastAPI backend
 │   ├── app/
 │   │   ├── api/v1/            # Versioned API endpoints
-│   │   ├── core/              # Core infrastructure (config, database, security)
+│   │   ├── SQL/              # SQL infrastructure (config, database, security)
 │   │   ├── models/            # SQLAlchemy database models
 │   │   ├── schemas/           # Pydantic request/response schemas
 │   │   ├── repositories/      # Data access layer
@@ -552,8 +552,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **Documentation**: [docs/](docs/)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/core-ai-chatbot/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/core-ai-chatbot/discussions)
+- **Issues**: [GitHub Issues](https://github.com/yourusername/SQL-ai-chatbot/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/SQL-ai-chatbot/discussions)
 
 ---
 
@@ -565,8 +565,8 @@ If you find this project helpful, please consider giving it a ⭐ on GitHub!
 
 <div align="center">
 
-**Built with ❤️ by the CORE AI Team**
+**Built with ❤️ by the SQL AI Team**
 
-[Report Bug](https://github.com/yourusername/core-ai-chatbot/issues) • [Request Feature](https://github.com/yourusername/core-ai-chatbot/issues)
+[Report Bug](https://github.com/yourusername/SQL-ai-chatbot/issues) • [Request Feature](https://github.com/yourusername/SQL-ai-chatbot/issues)
 
 </div>
