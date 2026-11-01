@@ -1,73 +1,48 @@
-"""
-SQL Agent Service - Generates SQL from natural language using Ollama + SQLCoder
-"""
+import os
 import httpx
 import logging
 from typing import Optional
-from app.schemas.sql_schemas import (
-    SQLRequest, SQLResponse, DatabaseSchema, ValidationError
-)
+
+from app.schemas.sql_schemas import SQLResponse, DatabaseSchema, ValidationError
 from app.utils.sql_safety import SQLSafetyValidator
 
 logger = logging.getLogger(__name__)
 
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "mistral").lower()
+OLLAMA_URL = os.getenv("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "sqlcoder")
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY", "")
+MISTRAL_MODEL = os.getenv("MISTRAL_MODEL", "codestral-latest")
+
 
 class SQLAgentService:
-    """Service for generating SQL queries from natural language"""
-    
-    def __init__(self, ollama_url: str = "http://localhost:11434"):
-        self.ollama_url = ollama_url
-        self.model_name = "sqlcoder"  # Will pull this model via Ollama
+    def __init__(self):
         self.safety_validator = SQLSafetyValidator()
-    
+
     async def generate_sql(
         self,
         question: str,
         schema: DatabaseSchema,
-        conversation_history: Optional[list] = None
+        conversation_history: Optional[list] = None,
     ) -> SQLResponse:
-        """
-        Generate SQL query from natural language question
-        
-        Args:
-            question: Natural language question
-            schema: Database schema
-            conversation_history: Optional conversation history for context
-            
-        Returns:
-            SQLResponse with generated SQL and validation results
-        """
         try:
-            # Build prompt with schema context
-            prompt = self._build_prompt(question, schema, conversation_history)
-            
-            # Call Ollama API
-            generated_sql = await self._call_ollama(prompt)
-            
-            # Extract SQL from response (remove markdown, explanations, etc.)
+            prompt = self._build_prompt(question, schema)
+            generated_sql = await self._call_llm(prompt)
             sql = self._extract_sql(generated_sql)
-            
-            # Validate SQL safety
             is_valid, errors = self.safety_validator.validate(sql, strict_mode=True)
-            
-            # Format SQL
             if is_valid:
                 sql = self.safety_validator.format_sql(sql)
                 sql = self.safety_validator.sanitize_sql(sql, max_rows=100)
-            
-            # Generate explanation (optional)
             explanation = self._generate_explanation(sql, question)
-            
             return SQLResponse(
                 sql=sql,
                 explanation=explanation,
                 is_valid=is_valid,
                 validation_errors=errors,
-                confidence=0.9 if is_valid else 0.5
+                confidence=0.9 if is_valid else 0.5,
             )
-            
         except Exception as e:
-            logger.error(f"Error generating SQL: {str(e)}")
+            logger.error(f"Error generating SQL: {e}")
             return SQLResponse(
                 sql="",
                 explanation=None,
@@ -75,67 +50,85 @@ class SQLAgentService:
                 validation_errors=[
                     ValidationError(
                         error_type="generation_error",
-                        message=f"Failed to generate SQL: {str(e)}",
-                        severity="critical"
+                        message=f"Failed to generate SQL: {e}",
+                        severity="critical",
                     )
                 ],
-                confidence=0.0
+                confidence=0.0,
             )
-    
-    def _build_prompt(
-        self,
-        question: str,
-        schema: DatabaseSchema,
-        conversation_history: Optional[list] = None
-    ) -> str:
-        """Build prompt for SQL generation"""
-        # SQLCoder-specific prompt format (following defog.ai recommendations)
-        prompt = f"""### Task
-Generate a SQL query to answer the following question: `{question}`
 
-### Database Schema
-{schema.to_prompt_format()}
+    def _build_prompt(self, question: str, schema: DatabaseSchema) -> str:
+        return (
+            f"### Task\n"
+            f"Generate a SQL query to answer the following question: `{question}`\n\n"
+            f"### Database Schema\n"
+            f"{schema.to_prompt_format()}\n\n"
+            f"### Answer\n"
+            f"Given the database schema, here is the SQL query that answers `{question}`:\n"
+            f"```sql\n"
+        )
 
-### Answer
-Given the database schema, here is the SQL query that answers `{question}`:
-```sql
-"""
-        return prompt
-    
+    async def _call_llm(self, prompt: str) -> str:
+        if LLM_PROVIDER == "ollama":
+            return await self._call_ollama(prompt)
+        return await self._call_mistral(prompt)
+
     async def _call_ollama(self, prompt: str) -> str:
-        """Call Ollama API for SQL generation"""
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{self.ollama_url}/api/generate",
+                f"{OLLAMA_URL}/api/generate",
                 json={
-                    "model": self.model_name,
+                    "model": OLLAMA_MODEL,
                     "prompt": prompt,
                     "stream": False,
                     "options": {
-                        "temperature": 0.0,  # Deterministic SQL generation
+                        "temperature": 0.0,
                         "top_p": 0.95,
-                        "num_predict": 200,  # Limit tokens
-                        "stop": ["```", "\n\n\n"]  # Stop at code block end
-                    }
-                }
+                        "num_predict": 200,
+                        "stop": ["```", "\n\n\n"],
+                    },
+                },
             )
-            
             if response.status_code != 200:
                 raise Exception(f"Ollama API error: {response.text}")
-            
-            result = response.json()
-            return result.get("response", "")
-    
+            return response.json().get("response", "")
+
+    async def _call_mistral(self, prompt: str) -> str:
+        if not MISTRAL_API_KEY:
+            raise Exception("MISTRAL_API_KEY is not set")
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(
+                "https://api.mistral.ai/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": MISTRAL_MODEL,
+                    "messages": [
+                        {
+                            "role": "system",
+                            "content": (
+                                "You are a SQL expert. Given a database schema, "
+                                "generate only the SQL query that answers the user's "
+                                "question. Output only the SQL, no explanation."
+                            ),
+                        },
+                        {"role": "user", "content": prompt},
+                    ],
+                    "temperature": 0.0,
+                    "max_tokens": 500,
+                },
+            )
+            if response.status_code != 200:
+                raise Exception(f"Mistral API error: {response.text}")
+            data = response.json()
+            return data["choices"][0]["message"]["content"]
+
     def _extract_sql(self, generated_text: str) -> str:
-        """Extract SQL query from generated text"""
         text = generated_text.strip()
-        
-        # Remove any leading/trailing special tokens
         text = text.replace("<s>", "").replace("</s>", "").strip()
-        
-        # Remove markdown code blocks
         if "```sql" in text:
-            # Extract content between ```sql and ```
             start = text.find("```sql") + 6
             end = text.find("```", start)
             if end > start:
@@ -144,63 +137,36 @@ Given the database schema, here is the SQL query that answers `{question}`:
             text = text[3:]
             if text.endswith("```"):
                 text = text[:-3]
-        
-        # Clean up
-        text = text.strip()
-        
-        # Handle multiple lines - find the SELECT statement
-        lines = [l.strip() for l in text.split('\n') if l.strip()]
-        
-        # Look for SELECT statement
+            text = text.strip()
+        lines = [line.strip() for line in text.split("\n") if line.strip()]
         for i, line in enumerate(lines):
-            if line.upper().startswith('SELECT'):
-                # Join this line and subsequent lines until we hit a semicolon or end
+            if line.upper().startswith("SELECT"):
                 sql_lines = [line]
-                for next_line in lines[i+1:]:
+                for next_line in lines[i + 1 :]:
                     sql_lines.append(next_line)
-                    if next_line.endswith(';'):
+                    if next_line.endswith(";"):
                         break
-                return ' '.join(sql_lines).strip()
-        
-        # If no SELECT found, return first meaningful line
+                return " ".join(sql_lines).strip()
         if lines:
             return lines[0]
-        
         return text
-    
+
     def _generate_explanation(self, sql: str, question: str) -> str:
-        """Generate simple explanation of the SQL query"""
-        # Basic explanation based on SQL structure
-        if "JOIN" in sql.upper():
+        upper = sql.upper()
+        if "JOIN" in upper:
             return f"This query joins multiple tables to answer: {question}"
-        elif "GROUP BY" in sql.upper():
+        if "GROUP BY" in upper:
             return f"This query aggregates data to answer: {question}"
-        elif "WHERE" in sql.upper():
+        if "WHERE" in upper:
             return f"This query filters data to answer: {question}"
-        else:
-            return f"This query retrieves data to answer: {question}"
-    
-    async def validate_sql(
-        self,
-        sql: str,
-        schema: DatabaseSchema
-    ) -> SQLResponse:
-        """
-        Validate SQL query against schema and safety rules
-        
-        Args:
-            sql: SQL query to validate
-            schema: Database schema
-            
-        Returns:
-            SQLResponse with validation results
-        """
+        return f"This query retrieves data to answer: {question}"
+
+    async def validate_sql(self, sql: str, schema: DatabaseSchema) -> SQLResponse:
         is_valid, errors = self.safety_validator.validate(sql, strict_mode=True)
-        
         return SQLResponse(
             sql=sql,
             explanation=None,
             is_valid=is_valid,
             validation_errors=errors,
-            confidence=1.0 if is_valid else 0.0
+            confidence=1.0 if is_valid else 0.0,
         )
