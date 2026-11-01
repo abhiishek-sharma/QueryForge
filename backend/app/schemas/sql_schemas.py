@@ -85,10 +85,12 @@ class DatabaseSchema(BaseModel):
 class SQLRequest(BaseModel):
     """Request to generate SQL from natural language"""
     question: str = Field(..., description="Natural language question")
-    schema: DatabaseSchema = Field(..., description="Database schema")
+    db_schema: DatabaseSchema = Field(..., alias="schema", description="Database schema")
     conversation_id: Optional[str] = Field(None, description="Optional conversation ID for context")
     execute: bool = Field(default=False, description="Whether to execute the generated SQL")
     max_rows: int = Field(default=100, description="Maximum rows to return if executing")
+
+    model_config = {"populate_by_name": True}
 
 
 class ValidationError(BaseModel):
@@ -118,9 +120,11 @@ class QueryResult(BaseModel):
 class SQLExecuteRequest(BaseModel):
     """Request to execute SQL"""
     sql: str = Field(..., description="SQL query to execute")
-    schema: DatabaseSchema = Field(..., description="Database schema for validation")
+    db_schema: DatabaseSchema = Field(..., alias="schema", description="Database schema for validation")
     max_rows: int = Field(default=100, description="Maximum rows to return")
     timeout_seconds: int = Field(default=30, description="Query timeout in seconds")
+
+    model_config = {"populate_by_name": True}
 
 
 class SQLExecuteResponse(BaseModel):

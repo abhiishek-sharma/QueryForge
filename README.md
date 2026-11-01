@@ -1,122 +1,161 @@
 # QueryForge
 
-Ask questions about your data in plain English and get safe, validated SQL back.
-
-QueryForge is a natural-language-to-SQL agent. It reads your database schema, builds a schema-aware prompt, generates SQL with **SQLCoder** running locally on **Ollama**, and passes every query through a safety validator before anything can run.
-
-```
-"How many songs does each singer have?"
-        │
-        ▼
-SELECT singer.name, COUNT(song.song_id) AS song_count
-FROM singer
-LEFT JOIN song ON singer.singer_id = song.singer_id
-GROUP BY singer.singer_id, singer.name;
-```
-
-## Features
-
-- **Natural language → SQL** with SQLCoder, a model fine-tuned for text-to-SQL, served locally through Ollama. No data leaves your machine.
-- **Schema-aware prompting.** Tables, columns, types, primary keys and foreign keys are injected into the prompt, so joins use real relationships instead of guesses.
-- **Multi-format schema extraction.** Load a schema from a SQLite database, Excel workbook, CSV files, a SQL dump or JSON. Column types are inferred from the data.
-- **SQL safety guardrails.** Built on `sqlparse`:
-  - SELECT-only whitelist in strict mode
-  - blocks `DROP`, `TRUNCATE`, `ALTER`, `GRANT`/`REVOKE`, `EXEC`
-  - blocks `DELETE` and `UPDATE` without a `WHERE` clause
-  - blocks stacked-query and comment-injection patterns (`; DROP`, `--`, `/* */`)
-- **Structured responses.** Each result returns the SQL, a validity flag, any validation errors, a confidence score and an explanation.
-- **FastAPI backend and React frontend.**
+Natural-language to SQL agent. Upload a database file (SQLite, CSV, Excel), ask a question in plain English, and get a validated SQL query with executed results.
 
 ## Architecture
 
 ```
-React UI ──► FastAPI ──► SQLAgentService ──► Ollama (sqlcoder)
-                │              │
-                │              └──► SQLSafetyValidator (sqlparse)
-                └──► SchemaExtractor (SQLite / Excel / CSV / SQL dump / JSON)
+┌──────────────────┐      ┌───────────────────────────────────────┐
+│  React Frontend  │─────▶│  FastAPI Backend (/api/v1/sql/...)    │
+│  (Vite + TW)     │      │                                       │
+└──────────────────┘      │  ┌─────────────┐  ┌────────────────┐  │
+                          │  │ SQL Agent   │  │ Schema         │  │
+                          │  │ Service     │  │ Extractor      │  │
+                          │  │ (Mistral or │  │ (SQLite/CSV/   │  │
+                          │  │  Ollama)    │  │  Excel)        │  │
+                          │  └──────┬──────┘  └────────────────┘  │
+                          │         │                              │
+                          │  ┌──────▼──────┐  ┌────────────────┐  │
+                          │  │ SQL Safety  │  │ Query Executor │  │
+                          │  │ Validator   │  │ (read-only     │  │
+                          │  │             │  │  SQLite)       │  │
+                          │  └─────────────┘  └────────────────┘  │
+                          └───────────────────────────────────────┘
 ```
 
-| Path | Purpose |
-| --- | --- |
-| `backend/app/services/sql_agent_service.py` | Prompt construction, Ollama call, SQL extraction |
-| `backend/app/utils/sql_safety.py` | Safety validation and blocked-pattern rules |
-| `backend/app/utils/schema_extractor.py` | Schema extraction and type inference |
-| `backend/app/api/` | REST endpoints |
-| `frontend/` | React client |
+**Backend** (Python/FastAPI):
+- `sql_agent_service.py` — LLM abstraction supporting Mistral API and Ollama (sqlcoder)
+- `sql_safety.py` — validates queries: blocks DROP/DELETE/ALTER/injection, enforces SELECT-only
+- `schema_extractor.py` — extracts schema from SQLite, CSV, Excel, SQL dumps, JSON
+- `sql_endpoints.py` — REST API: generate SQL, validate, upload+query+execute, health check
 
-## Quick start
+**Frontend** (React/Vite/Tailwind):
+- File upload (drag & drop)
+- Natural language question input
+- Displays: generated SQL, validation status, result table with columns/rows/timing
 
-**Requirements:** Python 3.11+, Node.js 18+, [Ollama](https://ollama.com)
+## Setup
+
+### Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+
+### Backend
 
 ```bash
-# 1. Pull the model
-ollama pull sqlcoder
-
-# 2. Backend
 cd backend
 python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn main:app --reload       # http://localhost:8000, docs at /docs
+cp .env.example .env
+# Edit .env — set MISTRAL_API_KEY
+uvicorn main:app --reload --port 8000
+```
 
-# 3. Frontend (new terminal)
+### Frontend
+
+```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## API
+The frontend runs at `http://localhost:3000` and proxies `/api` requests to the backend.
 
-### `GET /api/v1/sql/health`
+## Environment Variables
 
-Checks that the service and Ollama are reachable.
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `LLM_PROVIDER` | No | `mistral` | `mistral` or `ollama` |
+| `MISTRAL_API_KEY` | Yes (if mistral) | — | Mistral API key |
+| `MISTRAL_MODEL` | No | `codestral-latest` | Mistral model name |
+| `OLLAMA_URL` | No | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | No | `sqlcoder` | Ollama model name |
 
-### `POST /api/v1/sql/generate`
+## API Endpoints
 
-```json
-{
-  "question": "List all singers born after 1990",
-  "schema": {
-    "name": "music_database",
-    "tables": [
-      {
-        "name": "singer",
-        "columns": [
-          {"name": "singer_id", "type": "INTEGER", "primary_key": true},
-          {"name": "name", "type": "TEXT"},
-          {"name": "birth_year", "type": "INTEGER"}
-        ],
-        "foreign_keys": []
-      }
-    ]
-  },
-  "execute": false
-}
+### `POST /api/v1/sql/query`
+
+Upload a file and ask a question. Returns generated SQL and executed results.
+
+```bash
+curl -X POST http://localhost:8000/api/v1/sql/query \
+  -F "file=@data.csv" \
+  -F "question=Show the top 5 rows by revenue" \
+  -F "max_rows=10"
 ```
 
 Response:
-
 ```json
 {
-  "sql": "SELECT name FROM singer WHERE birth_year > 1990",
+  "schema": { "name": "data", "tables": ["..."] },
+  "sql": "SELECT * FROM data ORDER BY revenue DESC LIMIT 5",
+  "explanation": "This query filters data to answer: ...",
   "is_valid": true,
   "validation_errors": [],
   "confidence": 0.9,
-  "explanation": "..."
+  "result": {
+    "columns": ["id", "name", "revenue"],
+    "rows": [[1, "Acme", 50000]],
+    "row_count": 5,
+    "execution_time_ms": 1.2
+  },
+  "execution_error": null
 }
 ```
 
-A query that fails validation comes back with `is_valid: false` and the reasons in `validation_errors`, and is never executed.
+### `POST /api/v1/sql/generate`
 
-## Testing
+Generate SQL from a question and schema (no file upload or execution).
+
+```bash
+curl -X POST http://localhost:8000/api/v1/sql/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "How many users are there?",
+    "schema": {
+      "name": "mydb",
+      "tables": [{
+        "name": "users",
+        "columns": [
+          {"name": "id", "type": "INTEGER", "primary_key": true, "nullable": false},
+          {"name": "name", "type": "TEXT", "primary_key": false, "nullable": false}
+        ],
+        "foreign_keys": []
+      }]
+    }
+  }'
+```
+
+### `POST /api/v1/sql/extract-schema`
+
+Extract schema from an uploaded file without generating SQL.
+
+### `GET /api/v1/sql/health`
+
+Returns provider status and connectivity.
+
+## Tests
 
 ```bash
 cd backend
-python test_sql_api.py     # runs sample questions against a running server
+python -m pytest tests/ -v
 ```
 
-Sample schemas (music and e-commerce) with expected SQL are in `backend/test_examples.py`.
+## Supported File Types
 
-## License
+| Format | Extensions |
+|---|---|
+| SQLite | `.db`, `.sqlite`, `.sqlite3` |
+| CSV | `.csv` |
+| Excel | `.xlsx`, `.xls` |
 
-MIT
+## Security
+
+- All generated queries pass through the SQL safety validator
+- Only `SELECT` statements are allowed (strict mode)
+- `DROP`, `DELETE`, `TRUNCATE`, `ALTER`, `INSERT`, `UPDATE` are blocked
+- SQL injection patterns (`;`, `--`, `/*`) are detected and rejected
+- Uploaded files are executed in read-only SQLite mode (`PRAGMA query_only = ON`)
+- Result sets are capped at a configurable `max_rows` (default 100)
