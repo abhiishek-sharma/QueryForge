@@ -1,173 +1,61 @@
+"""First-pass validation of generated SQL.
+
+This is a filter that gives clear error messages before execution. It is *not*
+the security boundary; ``app.db.readonly`` enforces read-only execution inside
+SQLite. The checks work on sqlparse tokens rather than raw text, so string
+literals such as ``'a--b'`` or column names such as ``exec`` are not flagged.
 """
-SQL safety validation utilities
-Prevents dangerous SQL operations and ensures query safety
-"""
-import re
+from typing import List, Tuple
+
 import sqlparse
-from typing import Tuple, List
+from sqlparse import tokens as T
+
 from app.schemas.sql_schemas import ValidationError
 
+FORBIDDEN_KEYWORDS = {
+    "INSERT", "UPDATE", "DELETE", "REPLACE", "MERGE", "UPSERT",
+    "CREATE", "DROP", "ALTER", "TRUNCATE", "RENAME",
+    "ATTACH", "DETACH", "PRAGMA", "VACUUM", "REINDEX", "ANALYZE",
+    "GRANT", "REVOKE", "BEGIN", "COMMIT", "ROLLBACK", "SAVEPOINT", "RELEASE",
+}
 
-class SQLSafetyValidator:
-    """Validates SQL queries for safety and security"""
-    
-    # Dangerous keywords that should be blocked
-    DANGEROUS_KEYWORDS = [
-        r'\bDROP\s+TABLE\b',
-        r'\bDROP\s+DATABASE\b',
-        r'\bTRUNCATE\b',
-        r'\bDELETE\s+FROM\b(?!\s+\w+\s+WHERE)',  # DELETE without WHERE
-        r'\bUPDATE\s+\w+\s+SET\b(?!.*WHERE)',     # UPDATE without WHERE
-        r'\bCREATE\s+TABLE\b',
-        r'\bALTER\s+TABLE\b',
-        r'\bGRANT\b',
-        r'\bREVOKE\b',
-        r'\bEXEC\b',
-        r'\bEXECUTE\b',
-        r';\s*DROP',  # SQL injection attempt
-        r'--',  # Comment injection
-        r'/\*',  # Block comment injection
-    ]
-    
-   
- # Allowed operations (whitelist)
-    ALLOWED_OPERATIONS = ['SELECT']
-    
-    @staticmethod
-    def validate(sql: str, strict_mode: bool = True) -> Tuple[bool, List[ValidationError]]:
-        """
-        Validate SQL query for safety
-        
-        Args:
-            sql: SQL query to validate
-            strict_mode: If True, only allow SELECT statements
-            
-        Returns:
-            Tuple of (is_valid, list_of_errors)
-        """
-        errors = []
-        
-        # Check for empty query
-        if not sql or not sql.strip():
-            errors.append(ValidationError(
-                error_type="empty_query",
-                message="SQL query is empty",
-                severity="error"
-            ))
-            return False, errors
-        
-        # Parse SQL
-        try:
-            parsed = sqlparse.parse(sql)
-            if not parsed:
-                errors.append(ValidationError(
-                    error_type="parse_error",
-                    message="Failed to parse SQL query",
-                    severity="error"
-                ))
-                return False, errors
-        except Exception as e:
-            errors.append(ValidationError(
-                error_type="syntax_error",
-                message=f"SQL syntax error: {str(e)}",
-                severity="error"
-            ))
-            return False, errors
-        
-        # Check for dangerous keywords
-        sql_upper = sql.upper()
-        for pattern in SQLSafetyValidator.DANGEROUS_KEYWORDS:
-            if re.search(pattern, sql_upper, re.IGNORECASE):
-                errors.append(ValidationError(
-                    error_type="dangerous_operation",
-                    message=f"Dangerous SQL operation detected: {pattern}",
-                    severity="critical"
-                ))
-        
-        # Check if only SELECT operations in strict mode
-        if strict_mode:
-            statement = parsed[0]
-            stmt_type = statement.get_type()
-            if stmt_type != 'SELECT':
-                errors.append(ValidationError(
-                    error_type="forbidden_operation",
-                    message=f"Only SELECT queries are allowed. Found: {stmt_type}",
-                    severity="error"
-                ))
-        
-        # Check for multiple statements (potential SQL injection)
-        if len(parsed) > 1:
-            errors.append(ValidationError(
-                error_type="multiple_statements",
-                message="Multiple SQL statements detected. Only single queries allowed.",
-                severity="critical"
-            ))
-        
-        # Validation passed if no critical/error severity issues
-        critical_errors = [e for e in errors if e.severity in ["error", "critical"]]
-        is_valid = len(critical_errors) == 0
-        
-        return is_valid, errors
-    
-    @staticmethod
-    def add_limit_clause(sql: str, max_rows: int = 100) -> str:
-        """
-        Add LIMIT clause to SQL if not present
-        
-        Args:
-            sql: SQL query
-            max_rows: Maximum number of rows to return
-            
-        Returns:
-            SQL with LIMIT clause
-        """
-        sql = sql.strip().rstrip(';')
-        
-        # Check if LIMIT already exists
-        if re.search(r'\bLIMIT\s+\d+', sql, re.IGNORECASE):
-            return sql
-        
-        # Add LIMIT
-        return f"{sql} LIMIT {max_rows}"
-    
-    @staticmethod
-    def sanitize_sql(sql: str, max_rows: int = 100) -> str:
-        """
-        Sanitize SQL query by adding safety measures
-        
-        Args:
-            sql: SQL query to sanitize
-            max_rows: Maximum rows to return
-            
-        Returns:
-            Sanitized SQL
-        """
-        # Remove trailing semicolons
-        sql = sql.strip().rstrip(';')
-        
-        # Add LIMIT if SELECT statement
-        if sql.upper().startswith('SELECT'):
-            sql = SQLSafetyValidator.add_limit_clause(sql, max_rows)
-        
-        return sql
-    
-    @staticmethod
-    def format_sql(sql: str) -> str:
-        """
-        Format SQL for better readability
-        
-        Args:
-            sql: SQL query to format
-            
-        Returns:
-            Formatted SQL
-        """
-        try:
-            return sqlparse.format(
-                sql,
-                reindent=True,
-                keyword_case='upper',
-                strip_comments=True
-            )
-        except:
-            return sql
+
+def strip_comments(sql: str) -> str:
+    return sqlparse.format(sql, strip_comments=True).strip()
+
+
+def _err(kind: str, msg: str, severity: str = "error") -> ValidationError:
+    return ValidationError(error_type=kind, message=msg, severity=severity)
+
+
+def validate(sql: str) -> Tuple[bool, List[ValidationError]]:
+    """Return (is_valid, errors) for a single read-only SELECT/WITH statement."""
+    cleaned = strip_comments(sql or "").rstrip(";").strip()
+    if not cleaned:
+        return False, [_err("empty_query", "SQL query is empty")]
+
+    statements = [s for s in sqlparse.parse(cleaned) if s.value.strip().strip(";")]
+    if len(statements) != 1:
+        return False, [_err("multiple_statements", "Only a single SQL statement is allowed", "critical")]
+
+    stmt = statements[0]
+    errors: List[ValidationError] = []
+    first = stmt.token_first(skip_cm=True, skip_ws=True)
+    first_kw = first.normalized.upper() if first is not None else ""
+    if first_kw not in ("SELECT", "WITH"):
+        errors.append(_err("forbidden_operation", f"Only SELECT queries are allowed (found {first_kw or 'nothing'})"))
+
+    found = {
+        tok.normalized.upper()
+        for tok in stmt.flatten()
+        if tok.ttype in T.Keyword or tok.ttype in (T.Keyword.DML, T.Keyword.DDL)
+    } & FORBIDDEN_KEYWORDS
+    for kw in sorted(found):
+        errors.append(_err("dangerous_operation", f"Statement contains forbidden keyword {kw}", "critical"))
+
+    return not errors, errors
+
+
+def prepare(sql: str) -> str:
+    """Normalise SQL for display and execution (comments removed, no trailing ';')."""
+    return strip_comments(sql).rstrip(";").strip()

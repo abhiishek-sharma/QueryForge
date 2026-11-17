@@ -1,335 +1,295 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api } from "./api";
-import Sidebar from "./components/Sidebar.jsx";
-import ChatMessage from "./components/ChatMessage.jsx";
-import ChatInput from "./components/ChatInput.jsx";
-import WelcomeScreen from "./components/WelcomeScreen.jsx";
-import SchemaInput from "./components/SchemaInput.jsx";
-import { Menu, Database, Copy, Check, Download, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  AlertTriangle, Check, CheckCircle, Copy, Database, FileSpreadsheet,
+  HelpCircle, Info, Loader2, Send, Table2, Upload, X,
+} from "lucide-react";
 
-// Default schema
-const DEFAULT_SCHEMA = {
-  name: "my_database",
-  tables: []
-};
+const ACCEPTED = ".db,.sqlite,.sqlite3,.csv,.xlsx";
+const EXAMPLES = [
+  "Which 3 customers spent the most on completed orders?",
+  "How many orders were placed in each month of 2025?",
+  "Which products cost more than 100?",
+];
+
+function HealthBadge({ health }) {
+  if (!health) return <span className="text-xs text-slate-500">checking backend…</span>;
+  if (health.error === "backend")
+    return <span className="text-xs text-red-400">backend not reachable</span>;
+  const ok = health.ollama_reachable && health.model_pulled;
+  return (
+    <span className={`text-xs flex items-center gap-1.5 ${ok ? "text-emerald-400" : "text-amber-400"}`}>
+      <span className={`w-2 h-2 rounded-full ${ok ? "bg-emerald-400" : "bg-amber-400"}`} />
+      {ok ? `${health.model} (local)` : !health.ollama_reachable ? "Ollama not running" : `run: ollama pull ${health.model}`}
+    </span>
+  );
+}
+
+function Panel({ icon: Icon, title, right, children, tone = "slate" }) {
+  const border = { slate: "border-slate-700", red: "border-red-500/30", amber: "border-amber-500/30" }[tone];
+  return (
+    <section className={`bg-slate-900 border ${border} rounded-xl overflow-hidden`}>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 gap-2">
+        <h3 className="text-sm font-medium flex items-center gap-2">
+          <Icon size={16} className="text-emerald-400" /> {title}
+        </h3>
+        {right}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function ResultTable({ result }) {
+  return (
+    <Panel
+      icon={Table2}
+      title="Result"
+      right={
+        <span className="text-xs text-slate-500">
+          {result.row_count} row{result.row_count !== 1 ? "s" : ""}
+          {result.truncated ? " (truncated)" : ""} · {result.execution_time_ms.toFixed(1)} ms
+        </span>
+      }
+    >
+      <div className="overflow-x-auto max-h-[28rem]">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-slate-800">
+            <tr>
+              {result.columns.map((c, i) => (
+                <th key={i} className="px-4 py-2 text-left text-xs font-semibold text-slate-300 whitespace-nowrap">{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {result.rows.map((row, ri) => (
+              <tr key={ri} className="border-b border-slate-800/60 hover:bg-slate-800/40">
+                {row.map((cell, ci) => (
+                  <td key={ci} className={`px-4 py-2 whitespace-nowrap ${typeof cell === "number" ? "text-right tabular-nums" : ""}`}>
+                    {cell === null ? <span className="text-slate-600 italic">NULL</span> : String(cell)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {result.rows.length === 0 && (
+              <tr><td colSpan={result.columns.length || 1} className="px-4 py-6 text-center text-slate-500">No rows returned</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      {result.truncated && (
+        <p className="px-4 py-2 text-xs text-amber-300 border-t border-slate-800">
+          Only the first {result.row_count} rows are shown.
+        </p>
+      )}
+    </Panel>
+  );
+}
 
 function App() {
-  // State
-  const [conversations, setConversations] = useState([]);
-  const [activeConversationId, setActiveConversationId] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [schema, setSchema] = useState(() => {
-    const saved = localStorage.getItem("sql-agent-schema");
-    return saved ? JSON.parse(saved) : DEFAULT_SCHEMA;
-  });
-  const [schemaCollapsed, setSchemaCollapsed] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [file, setFile] = useState(null);
+  const [question, setQuestion] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const [health, setHealth] = useState(null);
+  const inputRef = useRef(null);
 
-  const messagesEndRef = useRef(null);
-
-  // Load conversations on mount
   useEffect(() => {
-    loadConversations();
+    api.health().then(setHealth).catch(() => setHealth({ error: "backend" }));
   }, []);
 
-  // Save schema to localStorage
-  useEffect(() => {
-    localStorage.setItem("sql-agent-schema", JSON.stringify(schema));
-  }, [schema]);
+  const pick = (f) => { if (f) { setFile(f); setData(null); setError(null); } };
 
-  // Auto-scroll to bottom
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  const loadConversations = async () => {
+  const submit = async (e) => {
+    e.preventDefault();
+    if (!file || !question.trim() || loading) return;
+    setLoading(true); setError(null); setData(null);
     try {
-      const convs = await api.getConversations();
-      setConversations(convs);
+      setData(await api.query(file, question.trim()));
     } catch (err) {
-      console.error("Failed to load conversations:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const loadConversation = async (conversationId) => {
-    try {
-      const conv = await api.getConversation(conversationId);
-      setMessages(conv.messages || []);
-      setActiveConversationId(conversationId);
-      setError(null);
-    } catch (err) {
-      console.error("Failed to load conversation:", err);
-      setError("Failed to load conversation");
-    }
-  };
-
-  const handleNewChat = () => {
-    setActiveConversationId(null);
-    setMessages([]);
-    setError(null);
-  };
-
-  const handleSelectConversation = (conversationId) => {
-    if (conversationId !== activeConversationId) {
-      loadConversation(conversationId);
-    }
-  };
-
-  const handleDeleteConversation = async (conversationId) => {
-    try {
-      await api.deleteConversation(conversationId);
-      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
-      if (activeConversationId === conversationId) {
-        handleNewChat();
-      }
-    } catch (err) {
-      console.error("Failed to delete conversation:", err);
-    }
-  };
-
-  const handleRenameConversation = async (conversationId, newTitle) => {
-    try {
-      await api.updateConversation(conversationId, newTitle);
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversationId ? { ...c, title: newTitle } : c,
-        ),
-      );
-    } catch (err) {
-      console.error("Failed to rename conversation:", err);
-    }
-  };
-
-  const handleSendMessage = useCallback(
-    async (question) => {
-      // Validate schema
-      if (schema.tables.length === 0) {
-        setError("Please define at least one table in your database schema before asking questions.");
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-
-      // Add user message immediately
-      const userMessage = {
-        role: "user",
-        content: question,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, userMessage]);
-
-      try {
-        // Call SQL generation API
-        const response = await api.generateSQL(question, schema);
-
-        // Create assistant message with SQL result
-        let assistantContent = "";
-
-        if (response.is_valid) {
-          assistantContent = `\`\`\`sql\n${response.sql}\n\`\`\``;
-          if (response.explanation) {
-            assistantContent += `\n\n${response.explanation}`;
-          }
-        } else {
-          assistantContent = "⚠️ **Unable to generate valid SQL**\n\n";
-          if (response.sql) {
-            assistantContent += `Generated query:\n\`\`\`sql\n${response.sql}\n\`\`\`\n\n`;
-          }
-          assistantContent += "**Validation Errors:**\n";
-          response.validation_errors.forEach((err) => {
-            assistantContent += `- ${err.severity.toUpperCase()}: ${err.message}\n`;
-          });
-        }
-
-        const assistantMessage = {
-          role: "assistant",
-          content: assistantContent,
-          timestamp: new Date().toISOString(),
-          sql: response.sql,
-          isValid: response.is_valid,
-          confidence: response.confidence
-        };
-
-        setMessages((prev) => [...prev, assistantMessage]);
-        setIsLoading(false);
-      } catch (err) {
-        setError(err.message || "Failed to generate SQL");
-        setIsLoading(false);
-      }
-    },
-    [schema],
-  );
-
-  const handleExampleClick = (prompt) => {
-    handleSendMessage(prompt);
-  };
-
-  const handleCopySQL = async (sql) => {
-    await navigator.clipboard.writeText(sql);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleCopyConversation = async () => {
-    const text = messages
-      .map((m) => {
-        if (m.role === "user") {
-          return `Question: ${m.content}`;
-        } else {
-          return `SQL:\n${m.sql || m.content}`;
-        }
-      })
-      .join("\n\n");
+  const copy = async (text) => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setTimeout(() => setCopied(false), 1500);
   };
 
-  const handleExportConversation = () => {
-    const data = {
-      schema,
-      messages,
-      exportedAt: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(data, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `sql-conversation-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleClearConversation = () => {
-    setMessages([]);
-  };
+  const gen = data?.generation;
+  const blockingErrors = gen?.validation_errors?.filter((e) => e.error_type !== "llm_unavailable") || [];
+  const llmDown = gen?.validation_errors?.find((e) => e.error_type === "llm_unavailable" || e.error_type === "generation_error");
 
   return (
-    <div className="h-screen flex bg-slate-950 text-slate-100 relative overflow-hidden">
-      {/* Subtle background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-emerald-900/10 to-transparent pointer-events-none"></div>
+    <div className="min-h-screen">
+      <header className="border-b border-slate-800">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+          <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+            <Database size={18} className="text-white" />
+          </div>
+          <span className="font-semibold text-lg">QueryForge</span>
+          <span className="text-sm text-slate-500 hidden sm:inline">Plain-English questions → read-only SQL</span>
+          <span className="ml-auto"><HealthBadge health={health} /></span>
+        </div>
+      </header>
 
-      {/* Sidebar */}
-      <Sidebar
-        conversations={conversations}
-        activeConversationId={activeConversationId}
-        onSelectConversation={handleSelectConversation}
-        onNewChat={handleNewChat}
-        onDeleteConversation={handleDeleteConversation}
-        onRenameConversation={handleRenameConversation}
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onOpenSettings={() => { }} // Settings can be added later
-      />
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 relative z-10">
-        {/* Header */}
-        <header className="h-14 flex items-center justify-between px-6 border-b border-slate-800 bg-slate-950/80 backdrop-blur-xl relative">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className="lg:hidden p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
-            >
-              <Menu size={20} />
-            </button>
-
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center border border-emerald-400/30">
-                <Database size={18} className="text-white" />
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        <section>
+          <h2 className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2"><Upload size={16} /> 1. Upload a data file</h2>
+          {file ? (
+            <div className="flex items-center gap-3 p-4 bg-slate-900 border border-slate-700 rounded-xl">
+              <FileSpreadsheet size={24} className="text-emerald-400" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{file.name}</p>
+                <p className="text-xs text-slate-500">{(file.size / 1024).toFixed(1)} KB</p>
               </div>
-              <span className="font-semibold text-slate-200 text-lg">SQL Agent</span>
+              <button aria-label="Remove file" onClick={() => { setFile(null); setData(null); if (inputRef.current) inputRef.current.value = ""; }}
+                className="p-1.5 text-slate-400 hover:text-red-400 rounded-lg"><X size={18} /></button>
             </div>
-          </div>
-
-          {/* Header actions */}
-          {messages.length > 0 && (
-            <div className="flex items-center gap-1">
-              <button
-                onClick={handleClearConversation}
-                className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
-                title="Clear conversation"
-              >
-                <RotateCcw size={18} />
-              </button>
-              <button
-                onClick={handleCopyConversation}
-                className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
-                title="Copy conversation"
-              >
-                {copied ? (
-                  <Check size={18} className="text-green-500" />
-                ) : (
-                  <Copy size={18} />
-                )}
-              </button>
-              <button
-                onClick={handleExportConversation}
-                className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800 rounded-lg transition-colors"
-                title="Export conversation"
-              >
-                <Download size={18} />
-              </button>
-            </div>
-          )}
-        </header>
-
-        {/* Schema Input Section */}
-        <div className="border-b border-slate-800 bg-slate-950/50">
-          <div className="max-w-5xl mx-auto px-4 py-4">
-            <SchemaInput schema={schema} onSchemaChange={setSchema} />
-          </div>
-        </div>
-
-        {/* Messages Area */}
-        <div className={`flex-1 relative ${messages.length === 0 ? 'overflow-hidden' : 'overflow-y-auto'}`}>
-          {messages.length === 0 ? (
-            <WelcomeScreen onExampleClick={handleExampleClick} />
           ) : (
-            <div className="pb-6">
-              {messages.map((message, index) => (
-                <ChatMessage
-                  key={index}
-                  message={message}
-                  isStreaming={false}
-                />
-              ))}
-
-              {/* Typing indicator when loading */}
-              {isLoading && (
-                <ChatMessage
-                  message={{ role: "assistant", content: "Generating SQL query..." }}
-                  isStreaming={true}
-                />
-              )}
-
-              {/* Error message */}
-              {error && (
-                <div className="max-w-3xl mx-auto px-4 py-4">
-                  <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
-                    <strong>Error:</strong> {error}
-                  </div>
-                </div>
-              )}
-
-              <div ref={messagesEndRef} />
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); pick(e.dataTransfer.files[0]); }}
+              onClick={() => inputRef.current?.click()}
+              className={`cursor-pointer border-2 border-dashed rounded-xl p-8 text-center transition-colors ${dragOver ? "border-emerald-500 bg-emerald-500/5" : "border-slate-700 hover:border-slate-500"}`}
+            >
+              <Upload size={32} className="mx-auto mb-3 text-slate-500" />
+              <p className="text-sm text-slate-300">Drag & drop or <span className="text-emerald-400 underline">browse</span></p>
+              <p className="text-xs text-slate-500 mt-1">SQLite (.db, .sqlite) · CSV · Excel (.xlsx) · up to {health?.max_upload_mb ?? 25} MB</p>
+              <p className="text-xs text-slate-500 mt-1">Try <code className="text-slate-400">samples/shop.db</code> from the repo</p>
+              <input ref={inputRef} type="file" accept={ACCEPTED} onChange={(e) => pick(e.target.files[0])} className="hidden" />
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Input Area */}
-        <ChatInput
-          onSend={handleSendMessage}
-          isLoading={isLoading}
-          onStop={() => setIsLoading(false)}
-        />
-      </div>
+        <section>
+          <h2 className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2"><Send size={16} /> 2. Ask a question</h2>
+          <form onSubmit={submit} className="flex gap-2">
+            <input
+              type="text" value={question} onChange={(e) => setQuestion(e.target.value)} maxLength={1000}
+              placeholder="e.g. Which 3 customers spent the most on completed orders?"
+              className="flex-1 min-w-0 px-4 py-3 bg-slate-900 border border-slate-700 rounded-xl text-sm focus:outline-none focus:border-emerald-500 placeholder-slate-600"
+            />
+            <button type="submit" disabled={!file || !question.trim() || loading}
+              className="px-5 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-xl text-sm font-medium flex items-center gap-2">
+              {loading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />} Run
+            </button>
+          </form>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {EXAMPLES.map((q) => (
+              <button key={q} onClick={() => setQuestion(q)}
+                className="text-xs px-2.5 py-1 rounded-full border border-slate-700 text-slate-400 hover:text-slate-200 hover:border-slate-500">{q}</button>
+            ))}
+          </div>
+          {loading && <p className="text-xs text-slate-500 mt-2">Generating SQL with the local model. The first question after startup can take 30–60 s while the model loads.</p>}
+        </section>
+
+        {error && (
+          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start gap-3">
+            <AlertTriangle size={20} className="text-red-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-red-300">{error}</p>
+          </div>
+        )}
+
+        {gen && (
+          <div className="space-y-4">
+            {llmDown && (
+              <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-300 flex gap-3">
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" /> {llmDown.message}
+              </div>
+            )}
+
+            {gen.cannot_answer && (
+              <Panel icon={HelpCircle} title="The model could not answer this from the data" tone="amber">
+                <p className="px-4 py-3 text-sm text-amber-200">{gen.cannot_answer}</p>
+                <p className="px-4 pb-3 text-xs text-slate-500">No SQL was run. Rephrase the question, or check the detected schema below.</p>
+              </Panel>
+            )}
+
+            {gen.sql && (
+              <Panel
+                icon={Database}
+                title="Generated SQL"
+                tone={gen.is_valid ? "slate" : "red"}
+                right={
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-slate-500">{gen.model} · {(gen.generation_time_ms / 1000).toFixed(1)} s</span>
+                    <button onClick={() => copy(gen.sql)} title="Copy SQL" className="p-1.5 text-slate-400 hover:text-slate-200 rounded-lg">
+                      {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                    </button>
+                  </div>
+                }
+              >
+                {gen.assumption && (
+                  <p className="px-4 pt-3 text-xs text-sky-300 flex gap-2"><Info size={14} className="shrink-0" /> Assumption: {gen.assumption}</p>
+                )}
+                <pre className="p-4 text-sm font-mono text-emerald-300 overflow-x-auto whitespace-pre-wrap">{gen.sql}</pre>
+                <div className="px-4 pb-3 text-xs text-slate-500 flex items-start gap-2">
+                  {gen.is_valid && !data.execution_error ? (
+                    <><CheckCircle size={14} className="text-emerald-500 shrink-0" />
+                      Passed the read-only checks and ran. Check the SQL: running without errors does not mean it answers your question correctly.</>
+                  ) : !gen.is_valid ? (
+                    <><AlertTriangle size={14} className="text-red-400 shrink-0" /> Rejected before execution.</>
+                  ) : null}
+                </div>
+              </Panel>
+            )}
+
+            {blockingErrors.length > 0 && (
+              <section className="bg-red-500/5 border border-red-500/20 rounded-xl p-4 space-y-1">
+                {blockingErrors.map((e, i) => <p key={i} className="text-xs text-red-300">{e.message}</p>)}
+              </section>
+            )}
+
+            {data.execution_error && (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl text-sm text-amber-200 flex gap-3">
+                <AlertTriangle size={18} className="shrink-0 mt-0.5" /> {data.execution_error}
+              </div>
+            )}
+
+            {data.result && <ResultTable result={data.result} />}
+
+            <details className="bg-slate-900 border border-slate-700 rounded-xl">
+              <summary className="px-4 py-3 text-sm cursor-pointer text-slate-400 hover:text-slate-200">
+                Detected schema ({data.schema.tables.length} table{data.schema.tables.length !== 1 ? "s" : ""})
+              </summary>
+              <div className="px-4 pb-4 grid sm:grid-cols-2 gap-4">
+                {data.schema.tables.map((t) => (
+                  <div key={t.name}>
+                    <p className="text-xs font-mono text-emerald-400">{t.name} <span className="text-slate-500">({t.row_count} rows)</span></p>
+                    <ul className="ml-3 mt-1 space-y-0.5">
+                      {t.columns.map((c) => (
+                        <li key={c.name} className="text-xs text-slate-400 font-mono">
+                          {c.name} <span className="text-slate-600">{c.type}</span>
+                          {c.primary_key && <span className="text-amber-500 ml-1">PK</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        )}
+
+        {!gen && !error && !loading && (
+          <section className="mt-10 text-center text-slate-500 space-y-3">
+            <Database size={44} className="mx-auto opacity-30" />
+            <p>Upload a file and ask a question.</p>
+            <p className="text-sm max-w-lg mx-auto">
+              A local model writes one SQLite query, which then runs on a read-only copy of your file.
+              Always check the SQL: a query can run and still answer a different question.
+            </p>
+          </section>
+        )}
+      </main>
     </div>
   );
 }

@@ -1,186 +1,84 @@
-"""
-SQL generation API endpoints
-"""
-from fastapi import APIRouter, HTTPException, File, UploadFile
+import os
+import shutil
+import tempfile
 from pathlib import Path
-from app.schemas.sql_schemas import (
-    SQLRequest, SQLResponse, SQLExecuteRequest, SQLExecuteResponse
-)
+
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+
+from app.db.readonly import HARD_MAX_ROWS, QueryRejected, QueryTimeout, execute_readonly
+from app.schemas.sql_schemas import QueryResponse, QueryResult
 from app.services.sql_agent_service import SQLAgentService
-import logging
+from app.utils.schema_extractor import SUPPORTED_EXTS, extract_schema, to_sqlite
 
-logger = logging.getLogger(__name__)
+MAX_UPLOAD_MB = float(os.getenv("MAX_UPLOAD_MB", "25"))
+MAX_QUESTION_CHARS = 1000
+_CHUNK = 1024 * 1024
 
-router = APIRouter(prefix="/sql", tags=["SQL Agent"])
-
-# Initialize SQL agent service
+router = APIRouter(prefix="/sql", tags=["SQL"])
 sql_agent = SQLAgentService()
 
 
-@router.post("/generate", response_model=SQLResponse)
-async def generate_sql(request: SQLRequest):
-    """
-    Generate SQL query from natural language
-    
-    Args:
-        request: SQL generation request with question and schema
-        
-    Returns:
-        SQLResponse with generated SQL and validation results
-    """
-    try:
-        logger.info(f"Generating SQL for question: {request.question}")
-        
-        response = await sql_agent.generate_sql(
-            question=request.question,
-            schema=request.schema,
-            conversation_history=None  # TODO: Load from conversation_id if provided
-        )
-        
-        logger.info(f"Generated SQL: {response.sql}, Valid: {response.is_valid}")
-        
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error in generate_sql endpoint: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to generate SQL: {str(e)}"
-        )
+async def _save_upload(file: UploadFile, dest: str) -> None:
+    limit = int(MAX_UPLOAD_MB * 1024 * 1024)
+    written = 0
+    with open(dest, "wb") as out:
+        while chunk := await file.read(_CHUNK):
+            written += len(chunk)
+            if written > limit:
+                raise HTTPException(413, f"File exceeds the {MAX_UPLOAD_MB:g} MB upload limit")
+            out.write(chunk)
+    if written == 0:
+        raise HTTPException(400, "Uploaded file is empty")
 
 
-@router.post("/validate", response_model=SQLResponse)
-async def validate_sql(request: SQLExecuteRequest):
-    """
-    Validate SQL query for safety and syntax
-    
-    Args:
-        request: SQL validation request
-        
-    Returns:
-        SQLResponse with validation results
-    """
+@router.post("/query", response_model=QueryResponse, response_model_by_alias=True)
+async def query(
+    file: UploadFile = File(...),
+    question: str = Form(...),
+    max_rows: int = Form(100),
+):
+    question = question.strip()
+    if not question:
+        raise HTTPException(400, "Question is empty")
+    if len(question) > MAX_QUESTION_CHARS:
+        raise HTTPException(400, f"Question is longer than {MAX_QUESTION_CHARS} characters")
+    max_rows = max(1, min(max_rows, HARD_MAX_ROWS))
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in SUPPORTED_EXTS:
+        raise HTTPException(400, f"Unsupported file type '{ext}'. Allowed: {', '.join(SUPPORTED_EXTS)}")
+
+    tmp_dir = tempfile.mkdtemp(prefix="queryforge_")
     try:
-        logger.info(f"Validating SQL: {request.sql[:100]}...")
-        
-        response = await sql_agent.validate_sql(
-            sql=request.sql,
-            schema=request.schema
-        )
-        
-        return response
-        
-    except Exception as e:
-        logger.error(f"Error in validate_sql endpoint: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to validate SQL: {str(e)}"
-        )
+        upload_path = os.path.join(tmp_dir, f"upload{ext}")
+        await _save_upload(file, upload_path)
+        try:
+            db_path = to_sqlite(upload_path, ext, file.filename or "data")
+            schema = extract_schema(db_path, name=Path(file.filename or "data").stem)
+        except Exception as e:
+            raise HTTPException(400, f"Could not read the uploaded file: {e}")
+        if not schema.tables:
+            raise HTTPException(400, "No tables found in the uploaded file")
+
+        gen = await sql_agent.generate_sql(question, schema)
+        result, execution_error = None, None
+        if gen.is_valid:
+            try:
+                r = execute_readonly(db_path, gen.sql, max_rows=max_rows)
+                result = QueryResult(**r.__dict__)
+            except QueryTimeout as e:
+                execution_error = str(e)
+            except QueryRejected as e:
+                execution_error = f"Blocked by the read-only database connection: {e}"
+            except Exception as e:  # e.g. the model referenced a column that does not exist
+                execution_error = f"SQLite error: {e}"
+        return QueryResponse(schema=schema.model_dump(), generation=gen, result=result, execution_error=execution_error)
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
 @router.get("/health")
-async def health_check():
-    """
-    Check if SQL agent service is healthy
-    
-    Returns:
-        Health status including Ollama connectivity
-    """
-    try:
-        # Check if Ollama is accessible
-        import httpx
-        async with httpx.AsyncClient(timeout=5.0) as client:
-            response = await client.get(f"{sql_agent.ollama_url}/api/tags")
-            ollama_healthy = response.status_code == 200
-            models = response.json().get("models", []) if ollama_healthy else []
-            
-            # Check if sqlcoder model is available
-            sqlcoder_available = any(
-                model.get("name", "").startswith("sqlcoder") 
-                for model in models
-            )
-            
-            return {
-                "status": "healthy" if ollama_healthy else "degraded",
-                "ollama_connected": ollama_healthy,
-                "sqlcoder_available": sqlcoder_available,
-                "available_models": [m.get("name") for m in models],
-                "message": "SQL Agent is ready" if sqlcoder_available else "Please pull sqlcoder model: ollama pull sqlcoder"
-            }
-    except Exception as e:
-        return {
-            "status": "unhealthy",
-            "ollama_connected": False,
-            "sqlcoder_available": False,
-            "error": str(e),
-            "message": "Ollama is not running. Please start Ollama service."
-        }
-
-
-@router.post("/extract-schema")
-async def extract_schema_from_file(file: UploadFile = File(...)):
-    """
-    Extract database schema from uploaded SQLite file
-    
-    Args:
-        file: Uploaded database file (.db, .sqlite, .sqlite3)
-        
-    Returns:
-        DatabaseSchema extracted from the file
-    """
-    import tempfile
-    import os
-    from app.utils.schema_extractor import SchemaExtractor
-    
-    # Validate file extension
-    allowed_extensions = [
-        ".db", ".sqlite", ".sqlite3",  # SQLite
-        ".xlsx", ".xls",                # Excel
-        ".csv",                         # CSV
-        ".sql",                         # SQL dumps
-        ".json"                         # JSON
-    ]
-    file_ext = os.path.splitext(file.filename)[1].lower()
-    
-    if file_ext not in allowed_extensions:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type. Supported formats: {', '.join(allowed_extensions)}"
-        )
-    
-    # Save uploaded file to temporary location
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_path = temp_file.name
-        
-        # Extract schema (auto-detects file type)
-        logger.info(f"Extracting schema from: {file.filename}")
-        
-        # Use original filename for proper database name extraction
-        schema = SchemaExtractor.extract_schema_auto(temp_path)
-        # Override with original filename
-        schema.name = Path(file.filename).stem
-        
-        # Get additional info
-        info = SchemaExtractor.get_schema_info(temp_path)
-        
-        logger.info(f"Extracted {info['table_count']} tables with {info['total_columns']} columns")
-        
-        return {
-            "schema": schema,
-            "info": info,
-            "filename": file.filename
-        }
-        
-    except Exception as e:
-        logger.error(f"Error extracting schema: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to extract schema: {str(e)}"
-        )
-    finally:
-        # Clean up temporary file
-        if 'temp_path' in locals() and os.path.exists(temp_path):
-            os.unlink(temp_path)
+async def health():
+    info = await sql_agent.health()
+    info["status"] = "ok" if info["model_pulled"] else "degraded"
+    info["max_upload_mb"] = MAX_UPLOAD_MB
+    return info

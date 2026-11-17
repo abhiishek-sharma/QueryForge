@@ -1,0 +1,283 @@
+order_date,country,category,product,quantity,revenue,status
+2025-01-02,France,Bags,Laptop Sleeve,4,128.0,completed
+2025-01-02,France,Accessories,Camping Mug,2,19.0,completed
+2025-01-04,Canada,Accessories,Camping Mug,4,38.0,completed
+2025-01-04,Canada,Bags,Daypack 20L,2,130.0,completed
+2025-01-05,USA,Camping,Sleeping Bag,2,320.0,completed
+2025-01-05,USA,Bags,Laptop Sleeve,3,96.0,completed
+2025-01-05,USA,Accessories,Headlamp,2,58.0,completed
+2025-01-08,USA,Bags,Travel Duffel,1,95.0,cancelled
+2025-01-10,France,Bags,Daypack 20L,2,130.0,completed
+2025-01-10,France,Footwear,Leather Boots,1,140.0,completed
+2025-01-10,USA,Accessories,Sunglasses,2,96.0,cancelled
+2025-01-11,Spain,Apparel,Wool Sweater,4,300.0,completed
+2025-01-13,Spain,Accessories,Steel Water Bottle,1,24.0,completed
+2025-01-13,Spain,Bags,Travel Duffel,3,285.0,completed
+2025-01-17,France,Apparel,Fleece Jacket,2,200.0,completed
+2025-01-22,Spain,Accessories,Sunglasses,2,96.0,completed
+2025-01-24,France,Footwear,Canvas Sneakers,2,110.0,completed
+2025-01-24,France,Camping,Two-Person Tent,4,920.0,completed
+2025-01-24,France,Apparel,Hiking Socks,4,48.0,completed
+2025-01-27,Canada,Footwear,Leather Boots,3,420.0,completed
+2025-01-27,Canada,Footwear,Trail Running Shoes,2,178.0,completed
+2025-01-28,USA,Apparel,Wool Sweater,1,75.0,completed
+2025-01-28,USA,Camping,Sleeping Bag,3,480.0,completed
+2025-01-28,USA,Footwear,Leather Boots,4,560.0,completed
+2025-01-30,Canada,Apparel,Fleece Jacket,1,100.0,refunded
+2025-01-30,Canada,Apparel,Cotton T-Shirt,1,18.5,refunded
+2025-02-02,France,Camping,Two-Person Tent,1,230.0,completed
+2025-02-02,France,Bags,Travel Duffel,1,95.0,completed
+2025-02-02,France,Camping,Sleeping Bag,3,480.0,completed
+2025-02-02,France,Apparel,Fleece Jacket,4,400.0,completed
+2025-02-02,France,Apparel,Rain Jacket,2,240.0,completed
+2025-02-07,USA,Bags,Travel Duffel,3,285.0,completed
+2025-02-07,USA,Apparel,Wool Sweater,1,75.0,completed
+2025-02-07,USA,Camping,Two-Person Tent,2,460.0,completed
+2025-02-07,Spain,Bags,Laptop Sleeve,3,96.0,completed
+2025-02-07,Spain,Accessories,Camping Mug,4,38.0,completed
+2025-02-07,Spain,Accessories,Sunglasses,3,144.0,completed
+2025-02-08,Spain,Footwear,Leather Boots,1,140.0,cancelled
+2025-02-13,USA,Apparel,Wool Sweater,2,150.0,completed
+2025-02-17,USA,Accessories,Camping Mug,4,38.0,completed
+2025-02-20,France,Apparel,Cotton T-Shirt,1,18.5,completed
+2025-02-20,France,Bags,Laptop Sleeve,1,32.0,completed
+2025-02-21,Germany,Bags,Daypack 20L,2,130.0,completed
+2025-02-21,Germany,Accessories,Sunglasses,3,144.0,completed
+2025-02-24,Canada,Camping,Two-Person Tent,2,460.0,completed
+2025-02-24,Canada,Apparel,Wool Sweater,3,225.0,completed
+2025-02-24,Canada,Apparel,Hiking Socks,4,48.0,completed
+2025-03-02,France,Bags,Laptop Sleeve,4,128.0,completed
+2025-03-02,France,Bags,Travel Duffel,4,380.0,completed
+2025-03-03,France,Accessories,Steel Water Bottle,1,24.0,completed
+2025-03-03,France,Footwear,Leather Boots,1,140.0,refunded
+2025-03-08,USA,Apparel,Rain Jacket,1,120.0,completed
+2025-03-09,USA,Accessories,Steel Water Bottle,1,24.0,completed
+2025-03-10,USA,Apparel,Wool Sweater,3,225.0,completed
+2025-03-14,Canada,Bags,Laptop Sleeve,3,96.0,completed
+2025-03-14,France,Accessories,Headlamp,4,116.0,completed
+2025-03-14,France,Accessories,Sunglasses,1,48.0,completed
+2025-03-14,France,Footwear,Leather Boots,3,420.0,completed
+2025-03-18,USA,Footwear,Canvas Sneakers,1,55.0,refunded
+2025-03-18,USA,Bags,Daypack 20L,4,260.0,refunded
+2025-03-18,Spain,Accessories,Sunglasses,4,192.0,cancelled
+2025-03-18,Spain,Accessories,Steel Water Bottle,4,96.0,cancelled
+2025-03-23,USA,Bags,Travel Duffel,3,285.0,completed
+2025-03-23,USA,Bags,Daypack 20L,4,260.0,completed
+2025-03-24,USA,Accessories,Steel Water Bottle,4,96.0,cancelled
+2025-03-26,USA,Accessories,Steel Water Bottle,4,96.0,completed
+2025-03-26,USA,Apparel,Rain Jacket,1,120.0,completed
+2025-03-28,Spain,Apparel,Fleece Jacket,1,100.0,completed
+2025-03-28,Spain,Accessories,Steel Water Bottle,2,48.0,completed
+2025-03-31,USA,Accessories,Camping Mug,1,9.5,completed
+2025-04-01,France,Apparel,Cotton T-Shirt,3,55.5,completed
+2025-04-02,USA,Apparel,Rain Jacket,4,480.0,completed
+2025-04-06,Canada,Bags,Daypack 20L,4,260.0,refunded
+2025-04-08,Spain,Footwear,Leather Boots,3,420.0,completed
+2025-04-09,France,Apparel,Cotton T-Shirt,4,74.0,completed
+2025-04-09,France,Apparel,Hiking Socks,3,36.0,completed
+2025-04-09,France,Apparel,Rain Jacket,3,360.0,completed
+2025-04-12,France,Bags,Daypack 20L,4,260.0,completed
+2025-04-17,France,Footwear,Canvas Sneakers,2,110.0,completed
+2025-04-17,France,Apparel,Cotton T-Shirt,2,37.0,completed
+2025-04-18,Canada,Accessories,Steel Water Bottle,4,96.0,refunded
+2025-04-18,Canada,Camping,Two-Person Tent,2,460.0,refunded
+2025-04-18,Canada,Bags,Daypack 20L,4,260.0,refunded
+2025-04-19,USA,Apparel,Hiking Socks,3,36.0,cancelled
+2025-04-19,USA,Bags,Laptop Sleeve,4,128.0,cancelled
+2025-04-19,USA,Apparel,Fleece Jacket,4,400.0,cancelled
+2025-04-24,France,Accessories,Sunglasses,3,144.0,completed
+2025-04-24,France,Camping,Sleeping Bag,4,640.0,completed
+2025-04-29,France,Apparel,Hiking Socks,4,48.0,completed
+2025-04-29,France,Footwear,Canvas Sneakers,3,165.0,completed
+2025-04-29,France,Apparel,Fleece Jacket,4,400.0,completed
+2025-05-01,France,Footwear,Canvas Sneakers,4,220.0,completed
+2025-05-03,USA,Bags,Laptop Sleeve,4,128.0,completed
+2025-05-05,USA,Apparel,Hiking Socks,1,12.0,completed
+2025-05-05,USA,Apparel,Rain Jacket,4,480.0,completed
+2025-05-05,Spain,Footwear,Canvas Sneakers,2,110.0,refunded
+2025-05-06,Canada,Apparel,Cotton T-Shirt,1,18.5,completed
+2025-05-06,Canada,Apparel,Fleece Jacket,4,400.0,completed
+2025-05-06,Canada,Footwear,Canvas Sneakers,2,110.0,completed
+2025-05-11,Canada,Apparel,Fleece Jacket,2,200.0,completed
+2025-05-15,Canada,Apparel,Rain Jacket,2,240.0,completed
+2025-05-15,Canada,Bags,Laptop Sleeve,2,64.0,completed
+2025-05-15,Canada,Accessories,Camping Mug,3,28.5,completed
+2025-05-20,Canada,Accessories,Headlamp,3,87.0,completed
+2025-05-23,Spain,Apparel,Wool Sweater,4,300.0,completed
+2025-05-25,Spain,Accessories,Steel Water Bottle,3,72.0,completed
+2025-05-25,Spain,Apparel,Hiking Socks,4,48.0,completed
+2025-05-25,Spain,Apparel,Fleece Jacket,3,300.0,completed
+2025-06-05,France,Bags,Daypack 20L,2,130.0,completed
+2025-06-11,USA,Camping,Two-Person Tent,1,230.0,completed
+2025-06-11,USA,Accessories,Headlamp,1,29.0,completed
+2025-06-14,France,Bags,Daypack 20L,4,260.0,completed
+2025-06-14,France,Accessories,Headlamp,1,29.0,completed
+2025-06-14,France,Apparel,Rain Jacket,3,360.0,completed
+2025-06-16,USA,Accessories,Sunglasses,4,192.0,completed
+2025-06-16,USA,Apparel,Fleece Jacket,2,200.0,completed
+2025-06-17,France,Accessories,Camping Mug,1,9.5,completed
+2025-06-17,France,Bags,Travel Duffel,4,380.0,completed
+2025-06-18,France,Accessories,Steel Water Bottle,1,24.0,cancelled
+2025-06-18,France,Camping,Sleeping Bag,1,160.0,cancelled
+2025-06-21,France,Apparel,Wool Sweater,2,150.0,cancelled
+2025-06-23,USA,Apparel,Hiking Socks,2,24.0,completed
+2025-06-26,USA,Apparel,Fleece Jacket,4,400.0,completed
+2025-06-26,USA,Apparel,Rain Jacket,2,240.0,completed
+2025-06-29,France,Accessories,Steel Water Bottle,1,24.0,cancelled
+2025-06-29,France,Footwear,Trail Running Shoes,3,267.0,cancelled
+2025-07-01,Canada,Footwear,Leather Boots,1,140.0,completed
+2025-07-01,Canada,Apparel,Rain Jacket,4,480.0,completed
+2025-07-06,Canada,Accessories,Steel Water Bottle,1,24.0,completed
+2025-07-06,Canada,Apparel,Fleece Jacket,3,300.0,completed
+2025-07-06,Canada,Camping,Sleeping Bag,3,480.0,completed
+2025-07-08,Germany,Apparel,Rain Jacket,1,120.0,refunded
+2025-07-08,Germany,Apparel,Cotton T-Shirt,1,18.5,refunded
+2025-07-08,Germany,Apparel,Wool Sweater,3,225.0,refunded
+2025-07-09,Spain,Bags,Laptop Sleeve,3,96.0,completed
+2025-07-09,Spain,Footwear,Trail Running Shoes,1,89.0,completed
+2025-07-18,Spain,Accessories,Camping Mug,4,38.0,completed
+2025-07-18,Spain,Apparel,Wool Sweater,1,75.0,completed
+2025-07-18,Spain,Camping,Two-Person Tent,4,920.0,completed
+2025-07-23,USA,Camping,Two-Person Tent,1,230.0,completed
+2025-07-24,France,Footwear,Trail Running Shoes,4,356.0,completed
+2025-07-24,France,Apparel,Rain Jacket,2,240.0,completed
+2025-07-24,France,Accessories,Headlamp,2,58.0,completed
+2025-07-25,Canada,Camping,Two-Person Tent,1,230.0,completed
+2025-07-25,Canada,Footwear,Canvas Sneakers,3,165.0,completed
+2025-07-29,France,Apparel,Rain Jacket,4,480.0,completed
+2025-07-29,France,Apparel,Cotton T-Shirt,4,74.0,completed
+2025-07-29,France,Camping,Sleeping Bag,3,480.0,completed
+2025-07-30,USA,Apparel,Cotton T-Shirt,4,74.0,completed
+2025-07-30,USA,Apparel,Rain Jacket,1,120.0,completed
+2025-08-01,Canada,Accessories,Headlamp,4,116.0,completed
+2025-08-01,Canada,Footwear,Trail Running Shoes,4,356.0,completed
+2025-08-01,France,Footwear,Trail Running Shoes,3,267.0,cancelled
+2025-08-01,France,Bags,Laptop Sleeve,4,128.0,cancelled
+2025-08-01,Germany,Accessories,Sunglasses,3,144.0,completed
+2025-08-03,Spain,Apparel,Fleece Jacket,3,300.0,refunded
+2025-08-03,Spain,Accessories,Steel Water Bottle,2,48.0,refunded
+2025-08-03,Spain,Camping,Two-Person Tent,3,690.0,refunded
+2025-08-13,France,Bags,Laptop Sleeve,4,128.0,completed
+2025-08-13,France,Accessories,Headlamp,4,116.0,completed
+2025-08-13,France,Apparel,Wool Sweater,1,75.0,completed
+2025-08-13,France,Footwear,Trail Running Shoes,2,178.0,completed
+2025-08-14,Canada,Apparel,Wool Sweater,3,225.0,refunded
+2025-08-14,Canada,Footwear,Canvas Sneakers,3,165.0,refunded
+2025-08-16,Spain,Apparel,Rain Jacket,3,360.0,completed
+2025-08-16,Spain,Accessories,Sunglasses,1,48.0,completed
+2025-08-19,France,Accessories,Headlamp,4,116.0,completed
+2025-08-19,France,Accessories,Steel Water Bottle,3,72.0,completed
+2025-08-19,France,Footwear,Trail Running Shoes,2,178.0,completed
+2025-08-19,USA,Accessories,Camping Mug,1,9.5,completed
+2025-08-19,USA,Bags,Laptop Sleeve,1,32.0,completed
+2025-08-22,Spain,Apparel,Fleece Jacket,4,400.0,completed
+2025-08-22,Spain,Accessories,Steel Water Bottle,4,96.0,completed
+2025-08-22,Spain,Accessories,Headlamp,4,116.0,completed
+2025-08-25,Germany,Accessories,Headlamp,2,58.0,completed
+2025-08-25,Germany,Accessories,Steel Water Bottle,4,96.0,completed
+2025-08-27,Canada,Accessories,Steel Water Bottle,1,24.0,refunded
+2025-08-27,Canada,Bags,Daypack 20L,3,195.0,refunded
+2025-08-29,France,Accessories,Sunglasses,2,96.0,completed
+2025-08-29,France,Bags,Laptop Sleeve,2,64.0,completed
+2025-08-30,France,Apparel,Wool Sweater,2,150.0,completed
+2025-08-30,France,Accessories,Headlamp,1,29.0,completed
+2025-08-30,France,Apparel,Rain Jacket,3,360.0,completed
+2025-08-31,USA,Apparel,Wool Sweater,1,75.0,completed
+2025-08-31,USA,Camping,Sleeping Bag,2,320.0,completed
+2025-09-02,France,Camping,Sleeping Bag,1,160.0,completed
+2025-09-02,France,Footwear,Canvas Sneakers,2,110.0,completed
+2025-09-03,Spain,Footwear,Leather Boots,3,420.0,completed
+2025-09-04,France,Apparel,Cotton T-Shirt,4,74.0,completed
+2025-09-07,France,Accessories,Steel Water Bottle,3,72.0,completed
+2025-09-07,France,Bags,Travel Duffel,1,95.0,completed
+2025-09-12,USA,Bags,Daypack 20L,4,260.0,refunded
+2025-09-15,USA,Camping,Two-Person Tent,1,230.0,completed
+2025-09-17,France,Accessories,Camping Mug,4,38.0,completed
+2025-09-22,France,Accessories,Camping Mug,4,38.0,completed
+2025-09-27,USA,Apparel,Wool Sweater,4,300.0,completed
+2025-10-02,Spain,Apparel,Cotton T-Shirt,4,74.0,completed
+2025-10-02,Spain,Bags,Travel Duffel,2,190.0,completed
+2025-10-02,France,Bags,Travel Duffel,3,285.0,completed
+2025-10-02,France,Accessories,Headlamp,1,29.0,completed
+2025-10-09,France,Camping,Two-Person Tent,3,690.0,completed
+2025-10-09,France,Bags,Travel Duffel,2,190.0,completed
+2025-10-09,France,Apparel,Wool Sweater,1,75.0,completed
+2025-10-10,Canada,Accessories,Camping Mug,4,38.0,completed
+2025-10-12,France,Camping,Sleeping Bag,1,160.0,completed
+2025-10-12,France,Apparel,Fleece Jacket,1,100.0,completed
+2025-10-12,France,Bags,Daypack 20L,3,195.0,completed
+2025-10-20,Canada,Bags,Laptop Sleeve,4,128.0,refunded
+2025-10-20,Canada,Footwear,Trail Running Shoes,3,267.0,refunded
+2025-10-22,Spain,Apparel,Hiking Socks,2,24.0,completed
+2025-10-22,Spain,Footwear,Canvas Sneakers,1,55.0,completed
+2025-10-27,Canada,Camping,Sleeping Bag,3,480.0,completed
+2025-10-28,France,Apparel,Wool Sweater,3,225.0,completed
+2025-10-28,France,Footwear,Trail Running Shoes,2,178.0,completed
+2025-10-29,USA,Bags,Daypack 20L,1,65.0,completed
+2025-10-29,USA,Footwear,Trail Running Shoes,2,178.0,completed
+2025-10-29,USA,Footwear,Leather Boots,1,140.0,completed
+2025-10-31,USA,Accessories,Camping Mug,2,19.0,completed
+2025-11-03,Canada,Accessories,Steel Water Bottle,1,24.0,completed
+2025-11-03,Canada,Bags,Travel Duffel,2,190.0,completed
+2025-11-03,Canada,Footwear,Trail Running Shoes,1,89.0,completed
+2025-11-07,Spain,Apparel,Fleece Jacket,4,400.0,refunded
+2025-11-08,Spain,Bags,Travel Duffel,3,285.0,completed
+2025-11-11,Canada,Camping,Two-Person Tent,1,230.0,cancelled
+2025-11-11,Canada,Footwear,Trail Running Shoes,4,356.0,cancelled
+2025-11-12,Canada,Accessories,Sunglasses,2,96.0,completed
+2025-11-15,France,Camping,Two-Person Tent,3,690.0,completed
+2025-11-15,France,Footwear,Leather Boots,2,280.0,completed
+2025-11-15,France,Apparel,Rain Jacket,3,360.0,completed
+2025-11-17,France,Footwear,Canvas Sneakers,2,110.0,completed
+2025-11-17,France,Bags,Laptop Sleeve,3,96.0,completed
+2025-11-17,USA,Apparel,Rain Jacket,2,240.0,completed
+2025-11-17,USA,Bags,Daypack 20L,3,195.0,completed
+2025-11-22,France,Apparel,Wool Sweater,1,75.0,refunded
+2025-11-22,France,Apparel,Rain Jacket,3,360.0,refunded
+2025-11-23,USA,Camping,Two-Person Tent,1,230.0,completed
+2025-11-23,USA,Accessories,Camping Mug,1,9.5,completed
+2025-11-23,USA,Bags,Travel Duffel,1,95.0,completed
+2025-11-23,USA,Footwear,Trail Running Shoes,3,267.0,completed
+2025-11-23,USA,Camping,Two-Person Tent,2,460.0,completed
+2025-11-25,France,Accessories,Camping Mug,4,38.0,completed
+2025-11-25,France,Apparel,Cotton T-Shirt,1,18.5,completed
+2025-11-28,Canada,Bags,Laptop Sleeve,2,64.0,completed
+2025-11-28,Canada,Accessories,Camping Mug,1,9.5,completed
+2025-11-28,Canada,Footwear,Leather Boots,1,140.0,completed
+2025-11-29,Canada,Bags,Daypack 20L,2,130.0,completed
+2025-12-02,Spain,Bags,Travel Duffel,4,380.0,completed
+2025-12-02,Spain,Accessories,Steel Water Bottle,1,24.0,completed
+2025-12-03,France,Accessories,Camping Mug,2,19.0,cancelled
+2025-12-03,France,Footwear,Leather Boots,3,420.0,cancelled
+2025-12-04,France,Bags,Travel Duffel,4,380.0,cancelled
+2025-12-06,France,Camping,Two-Person Tent,1,230.0,cancelled
+2025-12-06,France,Footwear,Leather Boots,3,420.0,refunded
+2025-12-07,France,Bags,Laptop Sleeve,1,32.0,completed
+2025-12-07,France,Accessories,Headlamp,3,87.0,completed
+2025-12-07,France,Bags,Travel Duffel,3,285.0,completed
+2025-12-08,Canada,Bags,Laptop Sleeve,2,64.0,completed
+2025-12-08,Canada,Apparel,Wool Sweater,4,300.0,completed
+2025-12-09,Spain,Apparel,Cotton T-Shirt,2,37.0,completed
+2025-12-09,Spain,Camping,Two-Person Tent,1,230.0,completed
+2025-12-09,Spain,Camping,Sleeping Bag,4,640.0,completed
+2025-12-09,France,Camping,Two-Person Tent,3,690.0,refunded
+2025-12-11,Spain,Apparel,Wool Sweater,1,75.0,completed
+2025-12-11,Germany,Footwear,Leather Boots,4,560.0,completed
+2025-12-11,Germany,Apparel,Cotton T-Shirt,3,55.5,completed
+2025-12-11,Germany,Bags,Daypack 20L,2,130.0,completed
+2025-12-12,France,Accessories,Steel Water Bottle,2,48.0,completed
+2025-12-16,France,Accessories,Camping Mug,2,19.0,completed
+2025-12-16,France,Apparel,Wool Sweater,2,150.0,completed
+2025-12-19,Spain,Footwear,Leather Boots,3,420.0,completed
+2025-12-19,Spain,Bags,Daypack 20L,3,195.0,completed
+2025-12-20,France,Footwear,Leather Boots,2,280.0,completed
+2025-12-20,France,Accessories,Sunglasses,4,192.0,completed
+2025-12-20,France,Bags,Laptop Sleeve,2,64.0,completed
+2025-12-23,Canada,Bags,Daypack 20L,1,65.0,completed
+2025-12-23,France,Apparel,Rain Jacket,4,480.0,completed
+2025-12-23,France,Footwear,Leather Boots,3,420.0,completed
+2025-12-23,France,Apparel,Cotton T-Shirt,1,18.5,completed
+2025-12-26,France,Bags,Daypack 20L,3,195.0,completed
+2025-12-30,Germany,Footwear,Trail Running Shoes,2,178.0,completed
+2025-12-30,Germany,Accessories,Camping Mug,1,9.5,completed
+2025-12-30,Germany,Footwear,Leather Boots,4,560.0,completed
