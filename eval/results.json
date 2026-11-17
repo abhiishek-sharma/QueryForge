@@ -6,8 +6,9 @@
     "ollama": "ollama version is 0.40.15",
     "passed": 16,
     "total": 16,
-    "median_latency_ms": 4672,
-    "p95_latency_ms": 14953
+    "median_latency_ms": 48490,
+    "p95_latency_ms": 90866,
+    "ambiguous_with_stated_assumption": 1
   },
   "results": [
     {
@@ -19,7 +20,7 @@
       "sql": "SELECT name FROM customers WHERE country = 'Germany'",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 3953.3
+      "latency_ms": 77793.3
     },
     {
       "id": "filter-2",
@@ -30,7 +31,7 @@
       "sql": "SELECT name FROM products WHERE price > 100",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 3684.3
+      "latency_ms": 90865.6
     },
     {
       "id": "filter-3",
@@ -41,7 +42,7 @@
       "sql": "SELECT COUNT(*) FROM orders WHERE status = 'cancelled'",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 3635.5
+      "latency_ms": 75503.9
     },
     {
       "id": "filter-4",
@@ -52,7 +53,7 @@
       "sql": "SELECT name FROM customers WHERE signup_date LIKE '2024-03-%'",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 4582.4
+      "latency_ms": 79314.3
     },
     {
       "id": "agg-1",
@@ -63,7 +64,7 @@
       "sql": "SELECT category, COUNT(*) AS product_count\nFROM products\nGROUP BY category",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 5018.0
+      "latency_ms": 4418.8
     },
     {
       "id": "agg-2",
@@ -74,7 +75,7 @@
       "sql": "SELECT AVG(price) AS average_price FROM products",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 3341.1
+      "latency_ms": 3209.9
     },
     {
       "id": "agg-3",
@@ -85,7 +86,7 @@
       "sql": "SELECT country, COUNT(id) AS customer_count\nFROM customers\nGROUP BY country",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 4264.3
+      "latency_ms": 4511.2
     },
     {
       "id": "agg-4",
@@ -96,7 +97,7 @@
       "sql": "SELECT\n  strftime('%Y-%m', order_date) AS month,\n  COUNT(id) AS order_count\nFROM\n  orders\nWHERE\n  strftime('%Y', order_date) = '2025'\nGROUP BY\n  month\nORDER BY\n  month",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 14619.1
+      "latency_ms": 12292.2
     },
     {
       "id": "join-1",
@@ -107,7 +108,7 @@
       "sql": "SELECT p.category, SUM(oi.quantity * oi.unit_price) AS total_revenue\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.id\nJOIN products p ON oi.product_id = p.id\nWHERE o.status = 'completed'\nGROUP BY p.category",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 12203.9
+      "latency_ms": 106783.3
     },
     {
       "id": "join-2",
@@ -118,7 +119,7 @@
       "sql": "SELECT c.name, SUM(oi.quantity * oi.unit_price) AS total_spent\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nWHERE o.status = 'completed'\nGROUP BY c.id\nORDER BY total_spent DESC\nLIMIT 3",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 15904.7
+      "latency_ms": 15056.6
     },
     {
       "id": "join-3",
@@ -129,7 +130,7 @@
       "sql": "SELECT c.name, COUNT(o.id) AS order_count\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nWHERE c.country = 'Spain'\nGROUP BY c.name",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 9885.0
+      "latency_ms": 8526.0
     },
     {
       "id": "join-4",
@@ -140,7 +141,7 @@
       "sql": "SELECT p.name, SUM(oi.quantity) AS total_quantity\nFROM order_items oi\nJOIN products p ON oi.product_id = p.id\nGROUP BY p.name\nORDER BY total_quantity DESC\nLIMIT 1",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 9404.8
+      "latency_ms": 8923.5
     },
     {
       "id": "ambig-1",
@@ -151,7 +152,7 @@
       "sql": "SELECT SUM(order_items.quantity * order_items.unit_price) AS total_revenue\nFROM order_items",
       "assumption": null,
       "cannot_answer": null,
-      "latency_ms": 4762.1
+      "latency_ms": 51377.8
     },
     {
       "id": "ambig-2",
@@ -162,7 +163,7 @@
       "sql": "SELECT c.name, SUM(oi.quantity * oi.unit_price) AS total_order_value\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nGROUP BY c.id\nORDER BY total_order_value DESC\nLIMIT 1",
       "assumption": "The best customer is the one with the highest total order value.",
       "cannot_answer": null,
-      "latency_ms": 14952.7
+      "latency_ms": 71460.3
     },
     {
       "id": "unans-1",
@@ -173,7 +174,7 @@
       "sql": "",
       "assumption": null,
       "cannot_answer": "Email addresses are not present in the provided schema.",
-      "latency_ms": 3237.5
+      "latency_ms": 54897.1
     },
     {
       "id": "unans-2",
@@ -184,7 +185,7 @@
       "sql": "",
       "assumption": null,
       "cannot_answer": "The schema does not contain information about marketing campaigns or their impact on orders.",
-      "latency_ms": 4325.9
+      "latency_ms": 45602.0
     }
   ]
 }

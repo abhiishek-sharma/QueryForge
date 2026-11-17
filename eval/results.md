@@ -4,7 +4,8 @@
 - Date: 2026-11-17, machine: Darwin arm64
 - Dataset: `samples/shop.db` (synthetic), cases: `eval/cases.json`
 - **Answer correctness: 16/16** (result compared with a reference query's result, not just SQL validity)
-- Generation latency (warm model): median 4672 ms, p95 14953 ms
+- Generation latency (warm model): median 48490 ms, p95 90866 ms
+- Ambiguous questions where the model stated its assumption: 1/2
 
 | Category | Correct |
 |---|---|
@@ -33,4 +34,16 @@
 | unans-1 | What is the email address of each customer? | ✅ | refused | `CANNOT_ANSWER: Email addresses are not present in the provided schema.` |
 | unans-2 | Which marketing campaign brought in the most orders? | ✅ | refused | `CANNOT_ANSWER: The schema does not contain information about marketing campaigns or their impact on orders.` |
 
-Small, hand-written set on one synthetic schema. It shows how the demo behaves; it is not a benchmark.
+## How a case is scored
+
+- The generated SQL is run read-only and its rows are compared with the rows of a hand-written reference query.
+- Rows are compared as multisets (in order when the case sets `order_matters`). Floats are rounded to 2 decimals.
+- Extra columns are allowed: the case passes if some choice and order of the generated columns equals the reference columns.
+- Ambiguous cases list every accepted reading; matching any one passes. Whether the model *stated* its assumption is reported separately above.
+- Unanswerable cases pass only if the model replies `CANNOT_ANSWER`. SQL that runs and returns nothing counts as a failure.
+- Invalid SQL, execution errors and refusals of answerable questions all count as failures.
+- The scorer itself is tested against realistic wrong queries in `backend/tests/test_eval_scoring.py`.
+
+## Limits
+
+16 hand-written questions on one small synthetic schema, written by the same person who wrote the prompt. Result comparison only catches mistakes that change the result on *this* data. This shows how the demo behaves; it is not a benchmark and says nothing about other databases.
