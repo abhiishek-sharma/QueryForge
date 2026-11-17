@@ -39,7 +39,7 @@ Open <http://localhost:3000>. The header should show `qwen2.5-coder:7b (local)` 
 
 1. Upload `samples/shop.db`. It's a synthetic shop with 4 tables (`customers`, `products`, `orders`, `order_items`) and all names made up.
 2. Ask: **Which 3 customers spent the most on completed orders?**
-3. You should see a 3-table `JOIN … WHERE o.status = 'completed' … ORDER BY … LIMIT 3` and three rows, with **Liam Novak** on top.
+3. You should see a 3-table `JOIN … WHERE o.status = 'completed' … ORDER BY … LIMIT 3` and three rows, with **Maya Tanaka** on top.
 4. Ask something the data can't answer, such as **What is the email address of each customer?** The model replies that it cannot answer, and no SQL runs.
 5. For a single-table CSV, upload `samples/sales.csv` and ask **Total revenue by category for completed orders**.
 
