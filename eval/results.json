@@ -1,0 +1,190 @@
+{
+  "meta": {
+    "model": "qwen2.5-coder:7b",
+    "date": "2026-11-17",
+    "machine": "arm64",
+    "ollama": "ollama version is 0.40.15",
+    "passed": 16,
+    "total": 16,
+    "median_latency_ms": 4672,
+    "p95_latency_ms": 14953
+  },
+  "results": [
+    {
+      "id": "filter-1",
+      "category": "filter",
+      "question": "List the names of customers who live in Germany.",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT name FROM customers WHERE country = 'Germany'",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 3953.3
+    },
+    {
+      "id": "filter-2",
+      "category": "filter",
+      "question": "Which products cost more than 100?",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT name FROM products WHERE price > 100",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 3684.3
+    },
+    {
+      "id": "filter-3",
+      "category": "filter",
+      "question": "How many orders were cancelled?",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT COUNT(*) FROM orders WHERE status = 'cancelled'",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 3635.5
+    },
+    {
+      "id": "filter-4",
+      "category": "filter",
+      "question": "Which customers signed up in March 2024?",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT name FROM customers WHERE signup_date LIKE '2024-03-%'",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 4582.4
+    },
+    {
+      "id": "agg-1",
+      "category": "aggregation",
+      "question": "How many products are in each category?",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT category, COUNT(*) AS product_count\nFROM products\nGROUP BY category",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 5018.0
+    },
+    {
+      "id": "agg-2",
+      "category": "aggregation",
+      "question": "What is the average product price?",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT AVG(price) AS average_price FROM products",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 3341.1
+    },
+    {
+      "id": "agg-3",
+      "category": "aggregation",
+      "question": "How many customers are there in each country?",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT country, COUNT(id) AS customer_count\nFROM customers\nGROUP BY country",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 4264.3
+    },
+    {
+      "id": "agg-4",
+      "category": "aggregation",
+      "question": "How many orders were placed in each month of 2025?",
+      "correct": true,
+      "reason": "matches reference 2",
+      "sql": "SELECT\n  strftime('%Y-%m', order_date) AS month,\n  COUNT(id) AS order_count\nFROM\n  orders\nWHERE\n  strftime('%Y', order_date) = '2025'\nGROUP BY\n  month\nORDER BY\n  month",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 14619.1
+    },
+    {
+      "id": "join-1",
+      "category": "join",
+      "question": "What is the total revenue from completed orders for each product category?",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT p.category, SUM(oi.quantity * oi.unit_price) AS total_revenue\nFROM order_items oi\nJOIN orders o ON oi.order_id = o.id\nJOIN products p ON oi.product_id = p.id\nWHERE o.status = 'completed'\nGROUP BY p.category",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 12203.9
+    },
+    {
+      "id": "join-2",
+      "category": "join",
+      "question": "Which 3 customers spent the most on completed orders? Show name and amount.",
+      "correct": true,
+      "reason": "matches reference",
+      "sql": "SELECT c.name, SUM(oi.quantity * oi.unit_price) AS total_spent\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nWHERE o.status = 'completed'\nGROUP BY c.id\nORDER BY total_spent DESC\nLIMIT 3",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 15904.7
+    },
+    {
+      "id": "join-3",
+      "category": "join",
+      "question": "How many orders has each customer from Spain placed? Show customer name and order count.",
+      "correct": true,
+      "reason": "matches reference 1",
+      "sql": "SELECT c.name, COUNT(o.id) AS order_count\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nWHERE c.country = 'Spain'\nGROUP BY c.name",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 9885.0
+    },
+    {
+      "id": "join-4",
+      "category": "join",
+      "question": "Which product was sold in the largest total quantity?",
+      "correct": true,
+      "reason": "matches reference 1",
+      "sql": "SELECT p.name, SUM(oi.quantity) AS total_quantity\nFROM order_items oi\nJOIN products p ON oi.product_id = p.id\nGROUP BY p.name\nORDER BY total_quantity DESC\nLIMIT 1",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 9404.8
+    },
+    {
+      "id": "ambig-1",
+      "category": "ambiguous",
+      "question": "What is our total revenue?",
+      "correct": true,
+      "reason": "matches reference 1",
+      "sql": "SELECT SUM(order_items.quantity * order_items.unit_price) AS total_revenue\nFROM order_items",
+      "assumption": null,
+      "cannot_answer": null,
+      "latency_ms": 4762.1
+    },
+    {
+      "id": "ambig-2",
+      "category": "ambiguous",
+      "question": "Who is our best customer?",
+      "correct": true,
+      "reason": "matches reference 1",
+      "sql": "SELECT c.name, SUM(oi.quantity * oi.unit_price) AS total_order_value\nFROM customers c\nJOIN orders o ON c.id = o.customer_id\nJOIN order_items oi ON o.id = oi.order_id\nGROUP BY c.id\nORDER BY total_order_value DESC\nLIMIT 1",
+      "assumption": "The best customer is the one with the highest total order value.",
+      "cannot_answer": null,
+      "latency_ms": 14952.7
+    },
+    {
+      "id": "unans-1",
+      "category": "unanswerable",
+      "question": "What is the email address of each customer?",
+      "correct": true,
+      "reason": "refused",
+      "sql": "",
+      "assumption": null,
+      "cannot_answer": "Email addresses are not present in the provided schema.",
+      "latency_ms": 3237.5
+    },
+    {
+      "id": "unans-2",
+      "category": "unanswerable",
+      "question": "Which marketing campaign brought in the most orders?",
+      "correct": true,
+      "reason": "refused",
+      "sql": "",
+      "assumption": null,
+      "cannot_answer": "The schema does not contain information about marketing campaigns or their impact on orders.",
+      "latency_ms": 4325.9
+    }
+  ]
+}

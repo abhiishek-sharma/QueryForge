@@ -1,62 +1,43 @@
-import csv
-import sqlite3
-import tempfile
-import os
+import pytest
 
-from app.utils.schema_extractor import SchemaExtractor
+from app.utils.schema_extractor import extract_schema, table_name_from_filename, to_sqlite
 
 
-class TestSchemaExtractorCSV:
-
-    def test_extract_csv(self, tmp_path):
-        csv_file = tmp_path / "data.csv"
-        csv_file.write_text("id,name,age\n1,Alice,30\n2,Bob,25\n")
-        schema = SchemaExtractor.extract_schema_auto(str(csv_file))
-        assert len(schema.tables) == 1
-        col_names = {c.name for c in schema.tables[0].columns}
-        assert "id" in col_names
-        assert "name" in col_names
-        assert "age" in col_names
-
-    def test_csv_types_inferred(self, tmp_path):
-        csv_file = tmp_path / "typed.csv"
-        csv_file.write_text("count,price,label\n1,9.99,foo\n2,3.50,bar\n")
-        schema = SchemaExtractor.extract_schema_auto(str(csv_file))
-        cols = {c.name: c.type for c in schema.tables[0].columns}
-        assert cols["count"] == "INTEGER"
-        assert cols["label"] == "TEXT"
+def test_sqlite_schema_with_fk_and_samples(shop_db):
+    s = extract_schema(shop_db)
+    orders = next(t for t in s.tables if t.name == "orders")
+    assert orders.row_count == 3
+    assert orders.foreign_keys[0].referenced_table == "customers"
+    assert len(orders.sample_rows) == 3
+    assert "FOREIGN KEY (customer_id) REFERENCES customers(id)" in s.to_prompt_format()
 
 
-class TestSchemaExtractorSQLite:
+def test_csv_table_named_after_file(tmp_path):
+    p = tmp_path / "upload.csv"
+    p.write_text("id,unit price\n1,9.5\n2,3.0\n")
+    db = to_sqlite(str(p), ".csv", "Q3 Sales-Report.csv")
+    s = extract_schema(db)
+    assert s.tables[0].name == "q3_sales_report"
+    assert '"unit price" REAL' in s.to_prompt_format()  # odd column names are quoted
 
-    def _make_db(self, tmp_path):
-        db_path = str(tmp_path / "test.db")
-        conn = sqlite3.connect(db_path)
-        conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT NOT NULL, age INTEGER)")
-        conn.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, total REAL, FOREIGN KEY(user_id) REFERENCES users(id))")
-        conn.execute("INSERT INTO users VALUES (1, 'Alice', 30)")
-        conn.commit()
-        conn.close()
-        return db_path
 
-    def test_extract_sqlite(self, tmp_path):
-        db_path = self._make_db(tmp_path)
-        schema = SchemaExtractor.extract_schema_auto(db_path)
-        table_names = {t.name for t in schema.tables}
-        assert "users" in table_names
-        assert "orders" in table_names
+def test_xlsx_sheets_become_tables(tmp_path):
+    import pandas as pd
+    p = tmp_path / "book.xlsx"
+    with pd.ExcelWriter(p) as w:
+        pd.DataFrame({"a": [1, 2]}).to_excel(w, sheet_name="First Sheet", index=False)
+        pd.DataFrame({"b": ["x"]}).to_excel(w, sheet_name="2nd", index=False)
+    s = extract_schema(to_sqlite(str(p), ".xlsx", "book.xlsx"))
+    assert {t.name for t in s.tables} == {"first_sheet", "t_2nd"}
 
-    def test_sqlite_columns(self, tmp_path):
-        db_path = self._make_db(tmp_path)
-        schema = SchemaExtractor.extract_schema_auto(db_path)
-        users = next(t for t in schema.tables if t.name == "users")
-        col_names = {c.name for c in users.columns}
-        assert "id" in col_names
-        assert "name" in col_names
-        assert "age" in col_names
 
-    def test_schema_info(self, tmp_path):
-        db_path = self._make_db(tmp_path)
-        info = SchemaExtractor.get_schema_info(db_path)
-        assert info["table_count"] == 2
-        assert info["total_columns"] >= 5
+def test_rejects_non_sqlite_file_with_db_extension(tmp_path):
+    p = tmp_path / "fake.db"
+    p.write_text("not a database")
+    with pytest.raises(ValueError):
+        to_sqlite(str(p), ".db", "fake.db")
+
+
+def test_table_name_sanitising():
+    assert table_name_from_filename("../../etc/passwd.csv") == "passwd"
+    assert table_name_from_filename("2025 data.csv") == "t_2025_data"

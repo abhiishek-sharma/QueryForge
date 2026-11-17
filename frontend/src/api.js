@@ -1,44 +1,26 @@
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// Same-origin by default: the Vite dev server proxies /api to the backend on :8000.
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
+async function errorMessage(response) {
+  const body = await response.json().catch(() => null);
+  if (body && typeof body.detail === "string") return body.detail;
+  if (response.status === 413) return "File is too large";
+  return `Request failed (${response.status})`;
+}
 
 export const api = {
   async query(file, question, maxRows = 100) {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("question", question);
-    formData.append("max_rows", String(maxRows));
-
-    const response = await fetch(`${API_BASE_URL}/api/v1/sql/query`, {
-      method: "POST",
-      body: formData,
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ detail: "Request failed" }));
-      throw new Error(err.detail || "Request failed");
+    const form = new FormData();
+    form.append("file", file);
+    form.append("question", question);
+    form.append("max_rows", String(maxRows));
+    let response;
+    try {
+      response = await fetch(`${API_BASE_URL}/api/v1/sql/query`, { method: "POST", body: form });
+    } catch {
+      throw new Error("Cannot reach the QueryForge backend. Is it running on port 8000?");
     }
-    return response.json();
-  },
-
-  async generateSQL(question, schema) {
-    const response = await fetch(`${API_BASE_URL}/api/v1/sql/generate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question, schema }),
-    });
-    if (!response.ok) throw new Error("Failed to generate SQL");
-    return response.json();
-  },
-
-  async extractSchema(file) {
-    const formData = new FormData();
-    formData.append("file", file);
-    const response = await fetch(`${API_BASE_URL}/api/v1/sql/extract-schema`, {
-      method: "POST",
-      body: formData,
-    });
-    if (!response.ok) {
-      const err = await response.json().catch(() => ({ detail: "Failed to extract schema" }));
-      throw new Error(err.detail || "Failed to extract schema");
-    }
+    if (!response.ok) throw new Error(await errorMessage(response));
     return response.json();
   },
 
